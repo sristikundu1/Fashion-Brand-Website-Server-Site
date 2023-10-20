@@ -31,7 +31,7 @@ async function run() {
     await client.connect();
 
     const productCollection = client.db("productDB").collection("products");
-    
+    const wishCollection = client.db("productDB").collection("wishproducts");
 
     // app.get("/products/:brand", async (req, res) => {
     //   const id = req.params.brand;
