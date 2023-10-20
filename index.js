@@ -41,7 +41,14 @@ async function run() {
     //   res.send(result);
     // })
 
-    
+    app.get("/products", async (req, res) => {
+      const cursor = productCollection.find();
+      const result = await cursor.toArray();//find data in array
+      res.send(result);
+    })
+
+   
+
     app.post("/products", async (req, res) => {
       const newProduct = req.body;
       console.log("new products:", newProduct);
@@ -50,7 +57,7 @@ async function run() {
       res.send(result);
     })
 
-    
+   
     
 
 
