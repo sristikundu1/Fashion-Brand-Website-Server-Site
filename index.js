@@ -54,14 +54,22 @@ async function run() {
       res.send(result);
     })
 
+    app.get("/products/productdetails/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result =await productCollection.findOne(query);
+      res.send(result);
+    })
+
     app.post("/products", async (req, res) => {
       const newProduct = req.body;
       console.log("new products:", newProduct);
-      // Insert the defined document into the "productdb" collection
+      // Insert the defined document into the "coffees" collection
       const result = await productCollection.insertOne(newProduct);
       res.send(result);
     })
 
+    
     app.put("/products/:id", async (req, res) => {
       const id = req.params.id;
       const updateProduct = req.body;
@@ -77,16 +85,39 @@ async function run() {
           details: updateProduct.details,
           photo: updateProduct.photo,
          
+
         }
       }
       const result = await productCollection.updateOne(filter, products, options);
       res.send(result);
 
     })
-    
 
 
-   
+
+    //use for cart data api 
+
+    app.get("/wishproducts", async (req, res) => {
+      const cursor = wishCollection.find();
+      const result = await cursor.toArray();//find data in array
+      res.send(result);
+    })
+
+    app.post("/wishproducts", async (req, res) => {
+      const cartProduct = req.body;
+      console.log("cart products:", cartProduct);
+      // Insert the defined document into the "coffees" collection
+      const result = await wishCollection.insertOne(cartProduct);
+      res.send(result);
+    })
+
+    app.delete("/wishproducts/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log("please delete from database");
+      const query = { _id: new ObjectId(id) } //unique objectId to delete one data
+      const result = await wishCollection.deleteOne(query);
+      res.send(result);
+    })
 
 
     // Send a ping to confirm a successful connection
