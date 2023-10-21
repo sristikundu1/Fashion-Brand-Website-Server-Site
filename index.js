@@ -1,29 +1,14 @@
-// Import Packages
-const express = require("express");
-const mongodb = require("mongodb");
-// const cookieParser = require("cookie-parser");
-const cors = require("cors");
-// const jwt = require("jsonwebtoken");
-// const morgan = require("morgan");
-//-----------------------------------------
 
-// -------------------- Initializations --------------------
-require("dotenv").config(); // dotenv
-const app = express(); // express
-const { MongoClient, ObjectId, ServerApiVersion } = mongodb;
-//-----------------------------------------
 
-//------------------- Accessing Secrets --------------------
-const PORT = process.env.PORT || 5000;
+const express = require('express');
+const app = express();
+const cors = require('cors');
+require('dotenv').config()
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const PORT= process.env.PORT || 5000
 const { SECRET_JWT, DB_URI } = process.env;
 //-----------------------------------------
 
-// Middleware options
-// const corsOptions = {
-//   origin: process.env.CLIENT_ADDRESS || process.env.DEV_CLIENT,
-//   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-//   withCredentials: true,
-// };
 
 // Middlewares
 app.use(express.json());
@@ -77,24 +62,49 @@ async function run() {
     const wishCollection = client.db("productDB").collection("wishproducts");
 
     // --------------- API END POINTS / REQUEST HANDLERS ---------
-    app.get("/", async (req, res) => {
-        try {
-            const query = { uid: res.decoded.uid };
-            const data = await paymentsCollection.find(query).toArray();
+    // app.get("/", async (req, res) => {
+    //     try {
+    //         const query = { uid: res.decoded.uid };
+    //         const data = await paymentsCollection.find(query).toArray();
 
-            res.status(200).send({
-                error: false,
-                message: "SERVER is UP and Running",
-                data,
-            });
-        } catch (error) {
-            console.error(error);
-            res.status(501).send({ error: true, message: "Query Failed" });
-        }
-    });
+    //         res.status(200).send({
+    //             error: false,
+    //             message: "SERVER is UP and Running",
+    //             data,
+    //         });
+    //     } catch (error) {
+    //         console.error(error);
+    //         res.status(501).send({ error: true, message: "Query Failed" });
+    //     }
+    // });
 
     app.get("/pb", async (req, res) => {
         res.send("hello");
+    })
+
+    app.put("/product/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateProduct = req.body;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true }
+      const products = {
+        $set: {
+          name: updateProduct.name,
+          brandName: updateProduct.brandName,
+          type: updateProduct.type,
+          price: updateProduct.price,
+          rating: updateProduct.rating,
+          details: updateProduct.details,
+          photo: updateProduct.photo,
+         
+
+        }
+      }
+      console.log(products);
+      const result = await productCollection.updateOne(filter, products, options);
+      
+      res.send(result);
+
     })
 
 
@@ -106,11 +116,11 @@ async function run() {
         res.send(result);
       })
 
-    // app.get("/products", async (req, res) => {
-    //     const cursor = productCollection.find();
-    //     const result = await cursor.toArray();//find data in array
-    //     res.send(result);
-    //   })
+    app.get("/products", async (req, res) => {
+        const cursor = productCollection.find();
+        const result = await cursor.toArray();//find data in array
+        res.send(result);
+      })
 
       app.get("/products/updateproduct/:id", async (req, res) => {
       const id = req.params.id;
@@ -135,28 +145,8 @@ async function run() {
     })
 
     
-    app.put("/products/:id", async (req, res) => {
-      const id = req.params.id;
-      const updateProduct = req.body;
-      const filter = { _id: new ObjectId(id) }
-      const options = { upsert: true }
-      const products = {
-        $set: {
-          name: updateProduct.name,
-          brandName: updateProduct.brandName,
-          type: updateProduct.type,
-          price: updateProduct.price,
-          rating: updateProduct.rating,
-          details: updateProduct.details,
-          photo: updateProduct.photo,
-         
-
-        }
-      }
-      const result = await productCollection.updateOne(filter, products, options);
-      res.send(result);
-
-    })
+    // app.put("/products/:id", async (req, res) => {
+    
 
 
 
