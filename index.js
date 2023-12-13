@@ -1,86 +1,50 @@
-
-
 const express = require('express');
-const app = express();
 const cors = require('cors');
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const PORT= process.env.PORT || 5000
-const { SECRET_JWT, DB_URI } = process.env;
-//-----------------------------------------
+const app = express();
 
+const formData = require('form-data');
+const Mailgun = require('mailgun.js');
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+  username: 'api',
+  key: process.env.MAIL_GUN_API_KEY,
+});
 
-// Middlewares
+const port = process.env.PORT || 5000;
+
+//middleware
+app.use(cors())
 app.use(express.json());
-// app.use(cookieParser("some_secret_untold"));
-app.use(cors());
-// app.use(morgan("tiny"));
 
-//-----------------------------------------
 
-//---------------- Middleware Functions -------------------
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.iz3zu0d.mongodb.net/?retryWrites=true&w=majority`;
 
-//
-// const authGuard = async (req, res, next) => {
-//   const { authtoken } = req.headers;
-//   try {
-//     const decoded = jwt.verify(authtoken, SECRET_JWT);
-//     if (decoded) {
-//       res.decoded = {};
-//       res.decoded = decoded;
-//       next();
-//     } else {
-//       res
-//         .status(403)
-//         .send({ error: true, message: "Unauthorized action attempted" })
-//         .end();
-//     }
-//   } catch (error) {
-//     console.error(error.message);
-//     res
-//       .status(403)
-//       .send({ error: true, message: "Auth-z failed. Invalid Token" })
-//       .end();
-//   }
-// };
-//-----------------------------------------
 
-//---------------- CONNECT MONGODB -------------------
-
-const client = new MongoClient(DB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverApi: ServerApiVersion.v1,
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
 });
 
 async function run() {
-    const productsCollection = client
-        .db("productDB")
-        .collection("ema_john_products");
-    const paymentsCollection = client.db("productDB").collection("payments");
+  try {
+    // Connect the client to the server	(optional starting in v4.7)
+    // await client.connect();
+
     const productCollection = client.db("productDB").collection("products");
     const wishCollection = client.db("productDB").collection("wishproducts");
+    const reviewCollection = client.db("productDB").collection("reviews");
+    const emailCollection = client.db("productDB").collection("emails");
 
-    // --------------- API END POINTS / REQUEST HANDLERS ---------
-    // app.get("/", async (req, res) => {
-    //     try {
-    //         const query = { uid: res.decoded.uid };
-    //         const data = await paymentsCollection.find(query).toArray();
 
-    //         res.status(200).send({
-    //             error: false,
-    //             message: "SERVER is UP and Running",
-    //             data,
-    //         });
-    //     } catch (error) {
-    //         console.error(error);
-    //         res.status(501).send({ error: true, message: "Query Failed" });
-    //     }
-    // });
+    // auth related api
 
-    app.get("/pb", async (req, res) => {
-        res.send("hello");
-    })
+
 
     app.put("/product/:id", async (req, res) => {
       const id = req.params.id;
@@ -96,43 +60,43 @@ async function run() {
           rating: updateProduct.rating,
           details: updateProduct.details,
           photo: updateProduct.photo,
-         
+
 
         }
       }
       console.log(products);
       const result = await productCollection.updateOne(filter, products, options);
-      
+
       res.send(result);
 
     })
 
 
     app.get("/products/:brand", async (req, res) => {
-        const id = req.params.brand;
-        const query = { brandName: id }
-        const cursor = productCollection.find(query);
-        const result = await cursor.toArray();//find data in array
-        res.send(result);
-      })
+      const id = req.params.brand;
+      const query = { brandName: id }
+      const cursor = productCollection.find(query);
+      const result = await cursor.toArray();//find data in array
+      res.send(result);
+    })
 
     app.get("/products", async (req, res) => {
-        const cursor = productCollection.find();
-        const result = await cursor.toArray();//find data in array
-        res.send(result);
-      })
+      const cursor = productCollection.find();
+      const result = await cursor.toArray();//find data in array
+      res.send(result);
+    })
 
-      app.get("/products/updateproduct/:id", async (req, res) => {
+    app.get("/products/updateproduct/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
-      const result =await productCollection.findOne(query);
+      const result = await productCollection.findOne(query);
       res.send(result);
     })
 
     app.get("/products/productdetails/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
-      const result =await productCollection.findOne(query);
+      const result = await productCollection.findOne(query);
       res.send(result);
     })
 
@@ -143,11 +107,6 @@ async function run() {
       const result = await productCollection.insertOne(newProduct);
       res.send(result);
     })
-
-    
-    // app.put("/products/:id", async (req, res) => {
-    
-
 
 
     //use for cart data api 
@@ -175,53 +134,63 @@ async function run() {
     })
 
 
-    // Token Signing API END point
-    //   app.get("/auth", async (req, res) => {
-    //     const { uid } = req.headers;
-    //     if (uid) {
-    //       const authtoken = jwt.sign({ uid }, SECRET_JWT);
-    /*
-res.cookie("authtoken", JSON.stringify(authtoken), {
-  httpOnly: true,
-  secure: true,
-});
-*/
-    //       res.status(200).send({ error: false, authtoken });
-    //     } else {
-    //       res.status(404).send({ error: true, message: "No UID was provided" });
-    //     }
-    //   });
+    app.get("/reviews", async (req, res) => {
+      const cursor = reviewCollection.find();
+      const result = await cursor.toArray();//find data in array
+      res.send(result);
+    })
 
-    // TEST POST DATA API END point
-    app.post("/test-post",  async (req, res) => {
-        try {
-            const payLoad = req.body;
-            const uid = res.decoded.uid;
-            payLoad["uid"] = uid;
-            const response = await paymentsCollection.insertOne(payLoad);
-            res.status(200).send(response);
-        } catch (error) {
-            console.error(error);
-            res.status(501).send({ error: true, message: "POST failed" });
-        }
-    });
+    app.post("/reviews", async (req, res) => {
+      const reviewProduct = req.body;
+      // console.log("new reviews:", reviewProduct);
+      // Insert the defined document into the "coffees" collection
+      const result = await reviewCollection.insertOne(reviewProduct);
+      res.send(result);
+    })
 
-    // TEST DELETE DATA API END point
-    app.delete("/test-delete",  async (req, res) => {
-        try {
-            const uid = res.decoded.uid;
-            const query = {
-                _id: ObjectId(req.headers.delete_id),
-                uid: res.decoded.uid,
-            };
-            const response = await paymentsCollection.deleteOne(query);
-            res.status(200).send(response);
-        } catch (error) {
-            console.error(error);
-            res.status(501).send({ error: true, message: "DELETE failed" });
-        }
+
+    app.post('/send-email', async (req, res) => {
+      try {
+        const { email } = req.body;
+        
+      
+        const result = await emailCollection.insertOne({ email });
+    
+        // Sending email through Mailgun
+        const msg = await mg.messages.create(process.env.MAIL_SENDING_DOMAIN, {
+          from: 'Mailgun Sandbox <postmaster@sandboxf4af6a762a0f4a7aa19f21e2d2e7f0c8.mailgun.org>',
+          to: ['sristikundu2468@gmail.com'],
+          subject: 'About Subscription',
+          text: 'Testing some Mailgun awesomeness!',
+          html: '<div><h2>Thank you for your subscription</h2></div>'
+        });
+    
+        console.log('Mailgun response:', msg); // Log Mailgun response
+
+        res.json({ success: true, message: 'Email subscribed successfully' });
+      } catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({ success: false, message: 'Error subscribing to the email' });
+      }
     });
+    
+
+    // Send a ping to confirm a successful connection
+    // await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
+  }
 }
+run().catch(console.dir);
 
-run().catch((error) => console.error(error));
-app.listen(PORT, () => console.log(`SERVER is running at port: ${PORT}`));
+
+
+app.get('/', (req, res) => {
+  res.send('Fashion and Apparel website server is running');
+});
+
+app.listen(port, () => {
+  console.log(`Fashion and Apparel website server is running on port : : ${port}`);
+});
